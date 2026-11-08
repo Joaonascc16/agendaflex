@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: pagina('Disponibilidade', 'profissionais', ~{::section})}">
+<body>
+<section>
+    <div class="cabecalho-pagina">
+        <div>
+            <h1 th:text="${'Disponibilidade de ' + profissional.nome}">Disponibilidade</h1>
+            <p>Os horários livres para agendamento saem do expediente abaixo, descontando bloqueios e atendimentos já marcados.</p>
+        </div>
+        <a class="botao botao-secundario" th:href="@{/profissionais}">Voltar aos profissionais</a>
+    </div>
+
+    <div class="cartao">
+        <h2>Expediente semanal</h2>
+        <p class="campo-ajuda">Para uma pausa de almoço, cadastre duas janelas no mesmo dia (por exemplo, 08:00 às 12:00 e 13:00 às 18:00).</p>
+
+        <p class="vazio" th:if="${#lists.isEmpty(horarios)}">Nenhum horário de trabalho cadastrado. Sem ele, não há horários livres para agendar.</p>
+        <div class="tabela-rolavel" th:unless="${#lists.isEmpty(horarios)}">
+            <table class="tabela">
+                <thead><tr><th>Dia</th><th>Das</th><th>Às</th><th></th></tr></thead>
+                <tbody>
+                <tr th:each="h : ${horarios}">
+                    <td th:text="${h.diaSemanaTexto}">Segunda-feira</td>
+                    <td th:text="${#temporals.format(h.horaInicio, 'HH:mm')}">08:00</td>
+                    <td th:text="${#temporals.format(h.horaFim, 'HH:mm')}">12:00</td>
+                    <td class="acoes">
+                        <form th:action="@{/profissionais/{pid}/disponibilidade/horarios/{hid}/remover(pid=${profissional.id}, hid=${h.id})}" method="post">
+                            <button class="botao botao-perigo botao-pequeno" type="submit">Remover</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>Adicionar horário</h2>
+        <form class="formulario" th:action="@{/profissionais/{id}/disponibilidade/horarios(id=${profissional.id})}"
+              th:object="${novoHorario}" method="post">
+            <div class="campo-linha">
+                <div class="campo">
+                    <label for="diaSemana">Dia da semana</label>
+                    <select id="diaSemana" th:field="*{diaSemana}">
+                        <option value="">Escolha o dia</option>
+                        <option th:each="d : ${diasSemana}" th:value="${d.valor}" th:text="${d.rotulo}">Segunda-feira</option>
+                    </select>
+                    <small class="erro-campo" th:if="${#fields.hasErrors('diaSemana')}" th:errors="*{diaSemana}">Erro</small>
+                </div>
+                <div class="campo">
+                    <label for="horaInicio">Das</label>
+                    <input type="time" id="horaInicio" th:field="*{horaInicio}">
+                    <small class="erro-campo" th:if="${#fields.hasErrors('horaInicio')}" th:errors="*{horaInicio}">Erro</small>
+                </div>
+                <div class="campo">
+                    <label for="horaFim">Às</label>
+                    <input type="time" id="horaFim" th:field="*{horaFim}">
+                    <small class="erro-campo" th:if="${#fields.hasErrors('horaFim')}" th:errors="*{horaFim}">Erro</small>
+                </div>
+            </div>
+            <div class="acoes-form">
+                <button class="botao" type="submit">Adicionar horário</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="cartao">
+        <h2>Bloqueios de agenda</h2>
+        <p class="campo-ajuda">Use para férias, folgas, consultas ou reuniões. Não é possível bloquear um período que já tenha atendimentos ativos.</p>
+
+        <p class="vazio" th:if="${#lists.isEmpty(bloqueios)}">Nenhum bloqueio programado.</p>
+        <div class="tabela-rolavel" th:unless="${#lists.isEmpty(bloqueios)}">
+            <table class="tabela">
+                <thead><tr><th>De</th><th>Até</th><th>Motivo</th><th></th></tr></thead>
+                <tbody>
+                <tr th:each="b : ${bloqueios}">
+                    <td th:text="${#temporals.format(b.inicio, 'dd/MM/yyyy HH:mm')}">10/11/2026 08:00</td>
+                    <td th:text="${#temporals.format(b.fim, 'dd/MM/yyyy HH:mm')}">10/11/2026 12:00</td>
+                    <td th:text="${b.motivo}">Motivo</td>
+                    <td class="acoes">
+                        <form th:action="@{/profissionais/{pid}/disponibilidade/bloqueios/{bid}/remover(pid=${profissional.id}, bid=${b.id})}" method="post">
+                            <button class="botao botao-perigo botao-pequeno" type="submit">Remover</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>Novo bloqueio</h2>
+        <form class="formulario" th:action="@{/profissionais/{id}/disponibilidade/bloqueios(id=${profissional.id})}"
+              th:object="${novoBloqueio}" method="post">
+            <div class="campo-linha">
+                <div class="campo">
+                    <label for="bloqueioInicio">Início</label>
+                    <input type="datetime-local" id="bloqueioInicio" th:field="*{inicio}">
+                    <small class="erro-campo" th:if="${#fields.hasErrors('inicio')}" th:errors="*{inicio}">Erro</small>
+                </div>
+                <div class="campo">
+                    <label for="bloqueioFim">Fim</label>
+                    <input type="datetime-local" id="bloqueioFim" th:field="*{fim}">
+                    <small class="erro-campo" th:if="${#fields.hasErrors('fim')}" th:errors="*{fim}">Erro</small>
+                </div>
+            </div>
+            <div class="campo">
+                <label for="motivo">Motivo</label>
+                <input type="text" id="motivo" th:field="*{motivo}" maxlength="200">
+                <small class="erro-campo" th:if="${#fields.hasErrors('motivo')}" th:errors="*{motivo}">Erro</small>
+            </div>
+            <div class="acoes-form">
+                <button class="botao" type="submit">Criar bloqueio</button>
+            </div>
+        </form>
+    </div>
+</section>
+</body>
+</html>

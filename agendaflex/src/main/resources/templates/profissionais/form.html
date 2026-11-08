@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: pagina('Profissional', 'profissionais', ~{::section})}">
+<body>
+<section>
+    <div class="cabecalho-pagina">
+        <h1 th:text="${profissional.id == null} ? 'Novo profissional' : 'Editar profissional'">Profissional</h1>
+        <a class="botao botao-secundario" th:href="@{/profissionais}">Voltar aos profissionais</a>
+    </div>
+
+    <div class="cartao">
+        <form class="formulario" th:action="@{/profissionais}" th:object="${profissional}" method="post">
+            <input type="hidden" th:field="*{id}">
+
+            <div class="campo-linha">
+                <div class="campo">
+                    <label for="nome">Nome</label>
+                    <input type="text" id="nome" th:field="*{nome}" maxlength="120">
+                    <small class="erro-campo" th:if="${#fields.hasErrors('nome')}" th:errors="*{nome}">Erro</small>
+                </div>
+                <div class="campo">
+                    <label for="especialidade">Especialidade</label>
+                    <input type="text" id="especialidade" th:field="*{especialidade}" maxlength="100">
+                    <small class="erro-campo" th:if="${#fields.hasErrors('especialidade')}" th:errors="*{especialidade}">Erro</small>
+                </div>
+            </div>
+
+            <div class="campo">
+                <span class="rotulo-campo">Serviços que realiza</span>
+                <p class="campo-ajuda" th:if="${#lists.isEmpty(servicos)}">
+                    Nenhum serviço cadastrado ainda. <a th:href="@{/servicos/novo}">Cadastre um serviço</a> para vincular aqui.
+                </p>
+                <div class="lista-marcar">
+                    <label class="campo-marcar" th:each="s : ${servicos}">
+                        <input type="checkbox" name="servicosIds" th:value="${s.id}"
+                               th:checked="${#lists.contains(profissional.servicosIds, s.id)}">
+                        <span th:text="${s.ativo ? s.nome : s.nome + ' (inativo)'}">Corte de cabelo</span>
+                    </label>
+                </div>
+                <span class="campo-ajuda">O profissional só aparece no agendamento dos serviços marcados aqui.</span>
+            </div>
+
+            <label class="campo-marcar">
+                <input type="checkbox" th:field="*{ativo}">
+                <span>Profissional ativo (recebe novos agendamentos)</span>
+            </label>
+
+            <div class="acoes-form">
+                <button class="botao" type="submit">Salvar profissional</button>
+            </div>
+        </form>
+    </div>
+</section>
+</body>
+</html>

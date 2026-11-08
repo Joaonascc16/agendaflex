@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: pagina('Reagendar', 'agendamentos', ~{::section})}">
+<body>
+<section>
+    <div class="cabecalho-pagina">
+        <div>
+            <h1>Reagendar atendimento</h1>
+            <p th:text="${agendamento.clienteNome + ': ' + agendamento.servicoNome + ' com ' + agendamento.profissionalNome}">Cliente: Serviço com Profissional</p>
+        </div>
+        <a class="botao botao-secundario" th:href="@{/agendamentos/{id}(id=${agendamento.id})}">Voltar ao agendamento</a>
+    </div>
+
+    <div class="cartao">
+        <p>Horário atual: <strong th:text="${#temporals.format(agendamento.inicio, 'dd/MM/yyyy HH:mm')}">10/11/2026 09:00</strong>.
+            Depois de reagendado, o atendimento volta para "Agendado" e precisa ser confirmado de novo.</p>
+
+        <form class="formulario" method="get" th:action="@{/agendamentos/{id}/reagendar(id=${agendamento.id})}">
+            <div class="campo">
+                <label for="data">Nova data</label>
+                <input type="date" id="data" name="data" th:value="${data}" th:min="${hoje}" required>
+            </div>
+            <div class="acoes-form">
+                <button class="botao" type="submit">Ver horários livres</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="cartao" th:if="${slots != null}">
+        <h2 th:text="${'Horários livres em ' + #temporals.format(data, 'dd/MM/yyyy')}">Horários livres</h2>
+
+        <div class="vazio" th:if="${#lists.isEmpty(slots)}">
+            <p>Não há horários livres nesse dia. Tente outra data.</p>
+        </div>
+
+        <form class="formulario" method="post" th:action="@{/agendamentos/{id}/reagendar(id=${agendamento.id})}"
+              th:unless="${#lists.isEmpty(slots)}">
+            <div class="campo">
+                <span class="rotulo-campo" id="rotulo-horarios">Novo horário</span>
+                <div class="slots" role="radiogroup" aria-labelledby="rotulo-horarios">
+                    <label class="slot" th:each="slot : ${slots}">
+                        <input type="radio" name="inicio" th:value="${slot.valor}" required>
+                        <span th:text="${slot.horaTexto}">09:00</span>
+                    </label>
+                </div>
+            </div>
+            <div class="acoes-form">
+                <button class="botao" type="submit">Confirmar novo horário</button>
+            </div>
+        </form>
+    </div>
+</section>
+</body>
+</html>

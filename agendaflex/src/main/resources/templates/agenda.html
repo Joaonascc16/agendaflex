@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: pagina('Agenda da semana', 'agenda', ~{::section})}">
+<body>
+<section>
+    <div class="cabecalho-pagina">
+        <div>
+            <h1>Agenda da semana</h1>
+            <p>Clique em um atendimento para abrir os detalhes.</p>
+        </div>
+        <a class="botao" th:href="@{/agendamentos/novo}">Novo agendamento</a>
+    </div>
+
+    <div class="cartao vazio" th:if="${#lists.isEmpty(profissionais)}">
+        <p>Cadastre um profissional para ver a agenda.</p>
+        <a class="botao" th:href="@{/profissionais/novo}">Novo profissional</a>
+    </div>
+
+    <div th:unless="${#lists.isEmpty(profissionais)}">
+        <div class="agenda-barra">
+            <form method="get" th:action="@{/agenda}" class="campo">
+                <label for="profissionalId">Profissional</label>
+                <select id="profissionalId" name="profissionalId" onchange="this.form.submit()">
+                    <option th:each="p : ${profissionais}" th:value="${p.id}" th:text="${p.nome}"
+                            th:selected="${p.id == profissionalId}">Profissional</option>
+                </select>
+                <input type="hidden" name="data" th:value="${semana.inicioSemana}">
+                <noscript><button class="botao botao-pequeno" type="submit">Ver agenda</button></noscript>
+            </form>
+
+            <div class="agenda-navegacao">
+                <a class="botao botao-secundario botao-pequeno"
+                   th:href="@{/agenda(profissionalId=${profissionalId}, data=${semana.semanaAnterior})}">Semana anterior</a>
+                <span class="agenda-titulo"
+                      th:text="${#temporals.format(semana.inicioSemana, 'dd/MM') + ' a ' + #temporals.format(semana.fimSemana, 'dd/MM/yyyy')}">09/11 a 15/11/2026</span>
+                <a class="botao botao-secundario botao-pequeno"
+                   th:href="@{/agenda(profissionalId=${profissionalId}, data=${semana.proximaSemana})}">Próxima semana</a>
+                <a class="botao botao-pequeno"
+                   th:href="@{/agenda(profissionalId=${profissionalId})}">Hoje</a>
+            </div>
+        </div>
+
+        <div class="agenda">
+            <div class="agenda-grade">
+                <div class="agenda-canto"></div>
+                <div class="agenda-cabecalho" th:each="dia : ${semana.dias}" th:classappend="${dia.hoje} ? 'hoje'">
+                    <span th:text="${#strings.capitalize(#temporals.format(dia.data, 'EEE'))}">Seg</span>
+                    <small th:text="${#temporals.format(dia.data, 'dd/MM')}">09/11</small>
+                </div>
+
+                <div class="agenda-horas" th:style="'height:' + ${semana.alturaPx} + 'px'">
+                    <span th:each="hora, estado : ${semana.horas}" th:text="${hora}"
+                          th:style="'top:' + ${estado.index * 60} + 'px'">07:00</span>
+                </div>
+
+                <div class="agenda-coluna" th:each="dia : ${semana.dias}" th:classappend="${dia.hoje} ? 'hoje'"
+                     th:style="'height:' + ${semana.alturaPx} + 'px'">
+                    <th:block th:each="b : ${dia.blocos}">
+                        <a th:if="${!b.bloqueio}" class="bloco"
+                           th:classappend="${'bloco-' + b.status.name().toLowerCase()}"
+                           th:href="@{/agendamentos/{id}(id=${b.id})}"
+                           th:style="'top:' + ${b.topoPx} + 'px;height:' + ${b.alturaPx} + 'px'"
+                           th:title="${b.horario + ': ' + b.titulo + ', ' + b.subtitulo}">
+                            <strong th:text="${b.titulo}">Cliente</strong>
+                            <small th:text="${b.subtitulo}">Serviço</small>
+                        </a>
+                        <div th:if="${b.bloqueio}" class="bloco bloco-bloqueio"
+                             th:style="'top:' + ${b.topoPx} + 'px;height:' + ${b.alturaPx} + 'px'"
+                             th:title="${b.horario + ': ' + b.subtitulo}">
+                            <strong th:text="${b.titulo}">Indisponível</strong>
+                            <small th:text="${b.subtitulo}">Motivo</small>
+                        </div>
+                    </th:block>
+                </div>
+            </div>
+        </div>
+
+        <div class="legenda">
+            <span><i style="background: var(--st-agendado-fundo); border-color: var(--st-agendado-borda)"></i>Agendado</span>
+            <span><i style="background: var(--st-confirmado-fundo); border-color: var(--st-confirmado-borda)"></i>Confirmado</span>
+            <span><i style="background: var(--st-concluido-fundo); border-color: var(--st-concluido-borda)"></i>Concluído</span>
+            <span><i style="background: var(--st-faltou-fundo); border-color: var(--st-faltou-borda)"></i>Faltou</span>
+            <span><i style="background: #e3e9e8; border-color: #8fa09e"></i>Indisponível</span>
+        </div>
+    </div>
+</section>
+</body>
+</html>

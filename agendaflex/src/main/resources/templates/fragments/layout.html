@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"
+      th:fragment="pagina(paginaTitulo, paginaAtiva, paginaConteudo)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${paginaTitulo} + ' – AgendaFlex'">AgendaFlex</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/agendaflex.css}">
+</head>
+<body>
+<div class="app">
+    <aside class="lateral">
+        <a class="marca" th:href="@{/}">AgendaFlex</a>
+        <nav class="menu" aria-label="Menu principal">
+            <a th:href="@{/}" th:classappend="${paginaAtiva == 'painel'} ? 'ativo'">Painel</a>
+            <a th:href="@{/agenda}" th:classappend="${paginaAtiva == 'agenda'} ? 'ativo'">Agenda da semana</a>
+            <a th:href="@{/agendamentos}" th:classappend="${paginaAtiva == 'agendamentos'} ? 'ativo'">Agendamentos</a>
+            <a th:href="@{/clientes}" th:classappend="${paginaAtiva == 'clientes'} ? 'ativo'">Clientes</a>
+            <a th:href="@{/profissionais}" th:classappend="${paginaAtiva == 'profissionais'} ? 'ativo'">Profissionais</a>
+            <a th:href="@{/servicos}" th:classappend="${paginaAtiva == 'servicos'} ? 'ativo'">Serviços</a>
+        </nav>
+        <a class="botao botao-destaque" th:href="@{/agendamentos/novo}">Novo agendamento</a>
+    </aside>
+
+    <main class="conteudo">
+        <div class="alerta alerta-sucesso" role="status" th:if="${sucesso}" th:text="${sucesso}"></div>
+        <div class="alerta alerta-erro" role="alert" th:if="${erro}" th:text="${erro}"></div>
+        <div th:insert="${paginaConteudo}"></div>
+    </main>
+</div>
+</body>
+</html>

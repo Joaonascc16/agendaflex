@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: pagina('Novo agendamento', 'agendamentos', ~{::section})}">
+<body>
+<section>
+    <div class="cabecalho-pagina">
+        <div>
+            <h1>Novo agendamento</h1>
+            <p>Escolha o serviço, o profissional e a data. O sistema mostra só os horários realmente livres.</p>
+        </div>
+        <a class="botao botao-secundario" th:href="@{/agendamentos}">Voltar aos agendamentos</a>
+    </div>
+
+    <div class="cartao">
+        <h2>Serviço, profissional e data</h2>
+        <form class="formulario" method="get" th:action="@{/agendamentos/novo}">
+            <div class="campo-linha">
+                <div class="campo">
+                    <label for="servicoId">Serviço</label>
+                    <select id="servicoId" name="servicoId"
+                            onchange="document.getElementById('profissionalId').value = ''; this.form.submit()">
+                        <option value="">Escolha o serviço</option>
+                        <option th:each="s : ${servicos}" th:value="${s.id}"
+                                th:text="${s.nome + ' (' + s.duracaoMinutos + ' min)'}"
+                                th:selected="${s.id == servicoId}">Corte de cabelo</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="profissionalId">Profissional</label>
+                    <select id="profissionalId" name="profissionalId">
+                        <option value="">Escolha o profissional</option>
+                        <option th:each="p : ${profissionais}" th:value="${p.id}" th:text="${p.nome}"
+                                th:selected="${p.id == profissionalId}">Ana Souza</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="data">Data</label>
+                    <input type="date" id="data" name="data" th:value="${data}" th:min="${hoje}">
+                </div>
+            </div>
+            <input type="hidden" name="clienteId" th:value="${clienteId}">
+            <p class="campo-ajuda" th:if="${servicoId != null and #lists.isEmpty(profissionais)}">
+                Nenhum profissional ativo realiza esse serviço. Vincule o serviço a um profissional em
+                <a th:href="@{/profissionais}">Profissionais</a>.
+            </p>
+            <div class="acoes-form">
+                <button class="botao" type="submit">Ver horários livres</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="cartao" th:if="${slots != null}">
+        <h2 th:text="${'Horários livres em ' + #temporals.format(data, 'dd/MM/yyyy')}">Horários livres</h2>
+
+        <div class="vazio" th:if="${#lists.isEmpty(slots)}">
+            <p>Não há horários livres nesse dia. O profissional pode não atender nessa data, estar bloqueado ou já ter a agenda cheia.
+               Tente outra data ou outro profissional.</p>
+        </div>
+
+        <form class="formulario" method="post" th:action="@{/agendamentos}" th:unless="${#lists.isEmpty(slots)}">
+            <input type="hidden" name="servicoId" th:value="${servicoId}">
+            <input type="hidden" name="profissionalId" th:value="${profissionalId}">
+
+            <div class="campo">
+                <span class="rotulo-campo" id="rotulo-horarios">Horário</span>
+                <div class="slots" role="radiogroup" aria-labelledby="rotulo-horarios">
+                    <label class="slot" th:each="slot : ${slots}">
+                        <input type="radio" name="inicio" th:value="${slot.valor}" required>
+                        <span th:text="${slot.horaTexto}">09:00</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="campo">
+                <label for="clienteSelecao">Cliente</label>
+                <select id="clienteSelecao" name="clienteId" required>
+                    <option value="">Escolha o cliente</option>
+                    <option th:each="c : ${clientes}" th:value="${c.id}"
+                            th:text="${c.bloqueado ? c.nome + ' (bloqueado por faltas)' : c.nome}"
+                            th:disabled="${c.bloqueado}"
+                            th:selected="${c.id == clienteId}">Cliente</option>
+                </select>
+                <span class="campo-ajuda">Não encontrou? <a th:href="@{/clientes/novo}">Cadastre um novo cliente</a>.</span>
+            </div>
+
+            <div class="campo">
+                <label for="observacoes">Observações</label>
+                <textarea id="observacoes" name="observacoes" maxlength="500"></textarea>
+            </div>
+
+            <div class="acoes-form">
+                <button class="botao" type="submit">Criar agendamento</button>
+            </div>
+        </form>
+    </div>
+</section>
+</body>
+</html>

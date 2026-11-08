@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Selo colorido com o status do agendamento -->
+<span th:fragment="seloStatus(status)" class="selo"
+      th:classappend="${'selo-' + status.name().toLowerCase()}"
+      th:text="${status.descricao}">Agendado</span>
+</body>
+</html>

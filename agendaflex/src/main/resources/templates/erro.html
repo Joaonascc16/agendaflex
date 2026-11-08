@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: pagina('Ops', 'painel', ~{::section})}">
+<body>
+<section>
+    <div class="cartao vazio">
+        <h1 th:text="${tituloErro}">Algo deu errado</h1>
+        <p th:text="${mensagemErro}">Mensagem</p>
+        <a class="botao" th:href="@{/}">Voltar ao painel</a>
+    </div>
+</section>
+</body>
+</html>

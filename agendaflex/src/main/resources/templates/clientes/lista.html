@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: pagina('Clientes', 'clientes', ~{::section})}">
+<body>
+<section>
+    <div class="cabecalho-pagina">
+        <h1>Clientes</h1>
+        <a class="botao" th:href="@{/clientes/novo}">Novo cliente</a>
+    </div>
+
+    <form class="filtros" method="get" th:action="@{/clientes}">
+        <div class="campo">
+            <label for="busca">Buscar por nome ou e-mail</label>
+            <input type="text" id="busca" name="busca" th:value="${busca}">
+        </div>
+        <button class="botao botao-secundario" type="submit">Buscar</button>
+    </form>
+
+    <div class="cartao">
+        <div class="vazio" th:if="${#lists.isEmpty(clientes)}">
+            <p>Nenhum cliente encontrado.</p>
+            <a class="botao" th:href="@{/clientes/novo}">Cadastrar cliente</a>
+        </div>
+        <div class="tabela-rolavel" th:unless="${#lists.isEmpty(clientes)}">
+            <table class="tabela">
+                <thead>
+                <tr><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Faltas</th><th>Situação</th><th></th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="c : ${clientes}">
+                    <td th:text="${c.nome}">Nome</td>
+                    <td th:text="${c.email}">email@exemplo.com</td>
+                    <td th:text="${c.telefone}">(47) 99999-0000</td>
+                    <td th:text="${c.faltas}">0</td>
+                    <td>
+                        <span class="selo selo-cancelado" th:if="${c.bloqueado}">Bloqueado por faltas</span>
+                        <span class="selo selo-ativo" th:if="${!c.bloqueado and c.ativo}">Ativo</span>
+                        <span class="selo selo-inativo" th:if="${!c.bloqueado and !c.ativo}">Inativo</span>
+                    </td>
+                    <td class="acoes">
+                        <a class="botao botao-secundario botao-pequeno" th:href="@{/clientes/{id}/editar(id=${c.id})}">Editar</a>
+                        <form th:action="@{/clientes/{id}/excluir(id=${c.id})}" method="post"
+                              onsubmit="return confirm('Excluir este cliente?')">
+                            <button class="botao botao-perigo botao-pequeno" type="submit">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+</body>
+</html>
