@@ -1,97 +1,258 @@
 # AgendaFlex
 
-Sistema de agendamento feito com **Spring Boot 3.5**, **Thymeleaf**, **Spring Data JPA** e testes com **JUnit 5**.
-O foco está na interface e nas **regras de negócio**: quem pode agendar, quando, com quem e o que acontece depois.
+Sistema web de gerenciamento de agendamentos, desenvolvido com Java e Spring Boot. O projeto permite administrar clientes, profissionais, serviços e horários de atendimento, aplicando regras de negócio para garantir a consistência da agenda.
 
-## Como rodar
+## Sumário
 
-Requisitos: **JDK 17 ou superior** e **Maven** (ou a sua IDE).
+- [Sobre o projeto](#sobre-o-projeto)
+- [Tecnologias utilizadas](#tecnologias-utilizadas)
+- [Arquitetura](#arquitetura)
+- [Funcionalidades](#funcionalidades)
+- [Regras de negócio](#regras-de-negócio)
+- [Testes automatizados](#testes-automatizados)
+- [Pré-requisitos](#pré-requisitos)
+- [Como executar](#como-executar)
+- [Acesso à aplicação](#acesso-à-aplicação)
 
-```bash
-mvn spring-boot:run
+## Sobre o projeto
+
+O AgendaFlex é uma aplicação web desenvolvida para centralizar o gerenciamento de agendamentos e organizar a disponibilidade dos profissionais.
+
+O sistema busca reduzir conflitos de horários, controlar a disponibilidade dos profissionais e manter os dados de clientes, serviços e atendimentos organizados.
+
+A aplicação utiliza o padrão MVC com separação de responsabilidades entre as camadas de apresentação, controle, serviços e persistência.
+
+## Tecnologias utilizadas
+
+| Tecnologia | Aplicação |
+|---|---|
+| Java 17 | Linguagem principal |
+| Spring Boot 3.5.9 | Framework da aplicação |
+| Spring MVC | Controle das requisições web |
+| Spring Data JPA | Persistência e acesso a dados |
+| Hibernate | Mapeamento objeto-relacional |
+| Thymeleaf | Renderização das páginas HTML |
+| HTML5 | Estrutura das páginas |
+| CSS3 | Estilização da interface |
+| MySQL / H2 | Configuração de persistência |
+| Maven | Gerenciamento de dependências |
+| JUnit 5 | Testes automatizados |
+| Mockito | Simulação de dependências nos testes |
+| Git e GitHub | Versionamento do código |
+
+## Arquitetura
+
+O projeto utiliza uma arquitetura em camadas, buscando separar as responsabilidades e facilitar a manutenção.
+
+### Organização dos pacotes
+
+```text
+src/
+├── main/
+│   ├── java/
+│   │   └── .../
+│   │       ├── controllers/
+│   │       ├── dtos/
+│   │       ├── entity/
+│   │       ├── repository/
+│   │       └── service/
+│   │
+│   └── resources/
+│       ├── static/
+│       │   └── css/
+│       ├── templates/
+│       └── application.properties
+│
+└── test/
+    └── java/
+        └── .../
 ```
 
-Abra http://localhost:8080. Na primeira execução o sistema carrega dados de exemplo
-(profissionais, serviços, clientes e alguns agendamentos). Para desligar, use `agendaflex.dados-demo=false`.
+### Responsabilidades das camadas
 
-Por padrão o banco é o **H2 em memória** (não precisa instalar nada; console em `/h2`).
-Para usar **MySQL**, ajuste usuário e senha em `application-mysql.properties` e rode:
+**Controllers**
+- Recebem as requisições HTTP.
+- Processam as interações com as páginas.
+- Encaminham operações para os serviços.
+- Retornam páginas e respostas apropriadas.
 
-```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=mysql
+**DTOs (Data Transfer Objects)**
+- Transportam dados entre as camadas.
+- Organizam os dados recebidos pelos formulários.
+- Evitam expor diretamente as entidades em operações que utilizam objetos de transferência.
+
+**Entities**
+- Representam as entidades persistidas no banco de dados.
+- Definem os atributos e os mapeamentos relacionais.
+
+**Repositories**
+- Realizam operações de acesso e persistência de dados.
+- Utilizam os recursos do Spring Data JPA.
+
+**Services**
+- Concentram as regras de negócio.
+- Validam operações antes da persistência.
+- Coordenam as operações entre diferentes repositórios.
+
+### Fluxo de processamento
+
+```text
+Usuário
+   |
+   v
+Controller
+   |
+   v
+Service
+   |
+   v
+Repository
+   |
+   v
+Banco de dados
 ```
 
-## Testes
+O resultado retorna pelas camadas até ser apresentado ao usuário pela interface Thymeleaf.
+
+## Funcionalidades
+
+### Gerenciamento de clientes
+- Cadastro de clientes.
+- Consulta de clientes.
+- Edição de informações cadastrais.
+
+### Gerenciamento de profissionais
+- Cadastro e manutenção de profissionais.
+- Consulta dos profissionais disponíveis.
+- Gerenciamento de horários de trabalho.
+
+### Gerenciamento de serviços
+- Cadastro e manutenção de serviços.
+- Definição de valores e duração.
+- Consulta dos serviços cadastrados.
+
+### Gerenciamento de agendamentos
+- Criação de novos agendamentos.
+- Consulta de agendamentos.
+- Reagendamento.
+- Cancelamento com motivo.
+- Visualização da agenda semanal.
+- Controle de disponibilidade.
+
+### Gerenciamento de disponibilidade
+- Configuração dos horários de trabalho.
+- Bloqueio de horários.
+- Verificação de disponibilidade dos profissionais.
+
+## Regras de negócio
+
+O sistema possui validações para preservar a integridade dos agendamentos.
+
+Entre as principais regras estão:
+
+1. **Disponibilidade profissional:** somente horários disponíveis devem ser apresentados para novos agendamentos.
+2. **Conflito de horários:** um profissional não deve possuir dois agendamentos conflitantes.
+3. **Sobreposição:** a validação considera a duração dos serviços, não apenas o horário inicial.
+4. **Horário de trabalho:** os agendamentos devem respeitar os períodos de atendimento cadastrados.
+5. **Bloqueios de agenda:** horários bloqueados não devem ser disponibilizados.
+6. **Reagendamento:** a alteração de horário deve passar novamente pelas validações de disponibilidade.
+7. **Integridade cadastral:** os dados obrigatórios devem ser validados antes de operações de cadastro e atualização.
+8. **Cancelamento:** o cancelamento permite registrar o motivo da operação.
+
+As validações são concentradas principalmente na camada de serviços, evitando depender exclusivamente da interface para proteger as regras do sistema.
+
+## Testes automatizados
+
+O projeto possui uma suíte de testes automatizados utilizando JUnit e Mockito.
+
+Os testes verificam comportamentos das classes de serviço e regras de negócio, incluindo cenários válidos e inválidos.
+
+**Última execução validada:**
+
+| Indicador | Resultado |
+|---|---:|
+| Testes executados | 127 |
+| Falhas | 0 |
+| Erros | 0 |
+| Ignorados | 0 |
+| Resultado | BUILD SUCCESS |
+
+O projeto também possui integração contínua com GitHub Actions para executar os testes durante o fluxo de atualização do repositório.
+
+> A aprovação dos testes representa os cenários cobertos pela suíte automatizada, não uma garantia absoluta de ausência de defeitos.
+
+## Pré-requisitos
+
+Para executar o projeto, é necessário ter:
+
+- JDK 17 ou compatível com a configuração do projeto.
+- Maven.
+- IntelliJ IDEA ou outra IDE compatível com Java.
+- Banco de dados configurado conforme o ambiente de execução.
+
+## Como executar
+
+### 1. Clonar o repositório
+
+```bash
+git clone https://github.com/Joaonascc16/agendaflex.git
+```
+
+### 2. Acessar o diretório do projeto
+
+Entre na pasta que contém o arquivo `pom.xml`.
+
+### 3. Configurar o banco de dados
+
+Verifique as configurações em:
+
+```text
+src/main/resources/application.properties
+```
+
+Configure a conexão com o banco de dados de acordo com o ambiente utilizado. Não compartilhe credenciais reais no repositório.
+
+### 4. Executar os testes
 
 ```bash
 mvn test
 ```
 
-| Camada | Classes | O que cobre |
-|---|---|---|
-| Entidades | `ClienteTest`, `ServicoTest`, `ProfissionalTest`, `HorarioTrabalhoTest`, `BloqueioTest`, `AgendamentoTest`, `StatusAgendamentoTest` | Regras de domínio de cada entidade, sem Spring e sem banco |
-| Serviço | `AgendamentoServiceTest` | Todas as regras de agendamento com repositórios simulados (Mockito) e relógio fixo |
-| Repository | `AgendamentoRepositoryTest` | Consultas de conflito e indicadores no banco (`@DataJpaTest`) |
-| Telas | `PaginasSmokeTest` | Abre cada página com dados reais para detectar erro em template |
+### 5. Iniciar a aplicação
 
-## Estrutura
-
-```
-br.com.agendaflex
-├── entity        Cliente, Servico, Profissional, HorarioTrabalho, Bloqueio, Agendamento
-├── dtos          objetos de formulário e de exibição
-├── repository    Spring Data JPA, com as consultas de conflito
-├── service       regras de negócio (AgendamentoService é o centro)
-├── controllers   telas Thymeleaf
-├── enums         StatusAgendamento (com a máquina de estados)
-├── exception     RegraNegocioException, RecursoNaoEncontradoException
-├── config        regras configuráveis, relógio, dados de exemplo
-└── util          pequenos utilitários de texto e tempo
+```bash
+mvn spring-boot:run
 ```
 
-## Regras de negócio
+Também é possível executar a classe principal da aplicação diretamente pela IDE.
 
-**Ao criar um agendamento**
+## Acesso à aplicação
 
-1. Cliente ativo e com menos faltas que o limite (padrão: 3).
-2. Serviço e profissional ativos, e o profissional realiza aquele serviço.
-3. Horário no futuro, com antecedência mínima (2 h) e máxima (60 dias).
-4. Horário na grade da agenda (de 30 em 30 minutos).
-5. Atendimento inteiro dentro de uma janela de trabalho do profissional, no mesmo dia.
-6. Sem bloqueio do profissional (férias, folgas) e sem conflito com outro agendamento dele.
-7. Sem conflito com outro agendamento do próprio cliente.
-8. Limite de agendamentos ativos por cliente (3) e por dia (2).
+Após iniciar o Spring Boot, acesse:
 
-**Depois de criado**
+```text
+http://localhost:8080
+```
 
-- Ciclo de vida: `Agendado → Confirmado → Concluído`, com `Cancelado` e `Faltou` como saídas.
-- Cancelar exige **motivo** e antecedência mínima (2 h).
-- Reagendar respeita as mesmas regras de horário, tem limite (2 vezes) e volta para `Agendado` até nova confirmação.
-- Concluir ou registrar falta só é possível depois do horário de início.
-- Registrar falta soma uma falta ao cliente; ao atingir o limite ele fica **bloqueado** até alguém zerar as faltas.
-- O preço fica gravado no agendamento: reajustar o serviço não altera o histórico.
+## Integração contínua
 
-**Cadastros**
+O projeto utiliza GitHub Actions para automatizar a execução dos testes.
 
-- Cliente, profissional e serviço com histórico de agendamentos não são excluídos, apenas desativados.
-- Não é possível desativar um profissional com agendamentos futuros.
-- Não é possível bloquear uma agenda que já tenha atendimentos ativos no período.
-- Janelas de trabalho do mesmo dia não podem se sobrepor (para o almoço, cadastre duas janelas).
+O workflow está localizado em:
 
-Todos os limites ficam em `application.properties` (prefixo `agendaflex.regras`), então dá para mudar o comportamento sem alterar código.
+```text
+.github/workflows/testes.yml
+```
 
-## Telas
+Essa automação permite verificar se as alterações enviadas ao repositório continuam passando pela suíte de testes.
 
-- **Painel**: atendimentos de hoje, pendentes de confirmação, próximos 7 dias, faltas e receita do mês.
-- **Agenda da semana**: grade por profissional com atendimentos e bloqueios; clique para abrir.
-- **Novo agendamento**: serviço, profissional e data mostram apenas os horários realmente livres.
-- **Agendamentos**: filtros por status e profissional; detalhe com as ações liberadas pelas regras.
-- **Clientes, Serviços e Profissionais**: cadastros, histórico do cliente, expediente e bloqueios.
+## Autor
 
-## Ideias para evoluir
+**João Pedro do Nascimento Morais**
 
-- Login e perfis (recepção, profissional, administrador) com Spring Security.
-- API REST com JWT e documentação Swagger sobre os mesmos serviços.
-- Lista de espera quando não há horários livres.
-- Agendamentos recorrentes (toda terça às 14h).
-- Envio de lembretes por e-mail.
+- GitHub: [@Joaonascc16](https://github.com/Joaonascc16)
+- Repositório: [AgendaFlex](https://github.com/Joaonascc16/agendaflex)
+
+---
+
+Projeto desenvolvido com foco no aprendizado e aplicação prática de Java, Spring Boot, arquitetura em camadas, persistência de dados e testes automatizados.
