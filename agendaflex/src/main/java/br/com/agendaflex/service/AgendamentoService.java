@@ -59,6 +59,7 @@ public class AgendamentoService {
     private final HorarioTrabalhoRepository horarioTrabalhoRepository;
     private final BloqueioRepository bloqueioRepository;
     private final RegrasAgendamentoProperties regras;
+    private final TenantContext tenantContext;
     private final Clock clock;
 
     // ------------------------------------------------------------------
@@ -67,20 +68,22 @@ public class AgendamentoService {
 
     public List<AgendamentoResumoDTO> listar(StatusAgendamento status, Long profissionalId) {
         List<Agendamento> agendamentos;
+        Long estabelecimentoId = tenantContext.obterEstabelecimentoId();
         if (status != null && profissionalId != null) {
-            agendamentos = agendamentoRepository.findByStatusAndProfissionalIdOrderByInicioDesc(status, profissionalId);
+            agendamentos = agendamentoRepository.findByEstabelecimentoIdAndStatusAndProfissionalIdOrderByInicioDesc(estabelecimentoId, status, profissionalId);
         } else if (status != null) {
-            agendamentos = agendamentoRepository.findByStatusOrderByInicioDesc(status);
+            agendamentos = agendamentoRepository.findByEstabelecimentoIdAndStatusOrderByInicioDesc(estabelecimentoId, status);
         } else if (profissionalId != null) {
-            agendamentos = agendamentoRepository.findByProfissionalIdOrderByInicioDesc(profissionalId);
+            agendamentos = agendamentoRepository.findByEstabelecimentoIdAndProfissionalIdOrderByInicioDesc(estabelecimentoId, profissionalId);
         } else {
-            agendamentos = agendamentoRepository.findAllByOrderByInicioDesc();
+            agendamentos = agendamentoRepository.findAllByEstabelecimentoIdOrderByInicioDesc(estabelecimentoId);
         }
         return paraResumos(agendamentos);
     }
 
     public List<AgendamentoResumoDTO> listarPorCliente(Long clienteId) {
-        return paraResumos(agendamentoRepository.findByClienteIdOrderByInicioDesc(clienteId));
+        return paraResumos(agendamentoRepository.findByEstabelecimentoIdAndClienteIdOrderByInicioDesc(
+                tenantContext.obterEstabelecimentoId(), clienteId));
     }
 
     public AgendamentoResumoDTO buscar(Long id) {
@@ -104,8 +107,10 @@ public class AgendamentoService {
             return List.of();
         }
 
+        Long estabelecimentoId = tenantContext.obterEstabelecimentoId();
         List<HorarioTrabalho> janelas = horarioTrabalhoRepository
-                .findByProfissionalIdAndDiaSemanaOrderByHoraInicio(profissionalId, data.getDayOfWeek());
+                .findByEstabelecimentoIdAndProfissionalIdAndDiaSemanaOrderByHoraInicio(
+                        estabelecimentoId, profissionalId, data.getDayOfWeek());
         if (janelas.isEmpty()) {
             return List.of();
         }
@@ -116,9 +121,10 @@ public class AgendamentoService {
         LocalDateTime inicioDoDia = data.atStartOfDay();
         LocalDateTime fimDoDia = data.plusDays(1).atStartOfDay();
 
-        List<Agendamento> ocupados = agendamentoRepository.buscarConflitosDoProfissional(
-                profissionalId, StatusAgendamento.ATIVOS, inicioDoDia, fimDoDia, ignorarAgendamentoId);
-        List<Bloqueio> bloqueios = bloqueioRepository.buscarSobrepostos(profissionalId, inicioDoDia, fimDoDia);
+        List<Agendamento> ocupados = agendamentoRepository.buscarConflitosDoProfissionalNoEstabelecimento(
+                estabelecimentoId, profissionalId, StatusAgendamento.ATIVOS, inicioDoDia, fimDoDia, ignorarAgendamentoId);
+        List<Bloqueio> bloqueios = bloqueioRepository.buscarSobrepostosNoEstabelecimento(
+                estabelecimentoId, profissionalId, inicioDoDia, fimDoDia);
 
         int passo = regras.getPassoSlotMinutos();
         int duracao = servico.getDuracaoMinutos();
@@ -166,6 +172,7 @@ public class AgendamentoService {
         validarLimitesDoCliente(cliente, inicio);
 
         Agendamento agendamento = new Agendamento();
+        agendamento.setEstabelecimento(tenantContext.obterEstabelecimento());
         agendamento.setCliente(cliente);
         agendamento.setProfissional(profissional);
         agendamento.setServico(servico);
@@ -280,41 +287,46 @@ public class AgendamentoService {
         LocalTime horaInicio = inicio.toLocalTime();
         LocalTime horaFim = fim.toLocalTime();
         boolean dentroDoExpediente = horarioTrabalhoRepository
-                .findByProfissionalIdAndDiaSemanaOrderByHoraInicio(profissional.getId(), inicio.getDayOfWeek())
+                .findByEstabelecimentoIdAndProfissionalIdAndDiaSemanaOrderByHoraInicio(
+                        tenantContext.obterEstabelecimentoId(), profissional.getId(), inicio.getDayOfWeek())
                 .stream()
                 .anyMatch(janela -> janela.cobre(horaInicio, horaFim));
         if (!dentroDoExpediente) {
             throw new RegraNegocioException(profissional.getNome() + " não atende nesse dia e horário.");
         }
 
-        List<Bloqueio> bloqueios = bloqueioRepository.buscarSobrepostos(profissional.getId(), inicio, fim);
+        List<Bloqueio> bloqueios = bloqueioRepository.buscarSobrepostosNoEstabelecimento(
+                tenantContext.obterEstabelecimentoId(), profissional.getId(), inicio, fim);
         if (!bloqueios.isEmpty()) {
             throw new RegraNegocioException(profissional.getNome()
                     + " está indisponível nesse período (" + bloqueios.get(0).getMotivo() + ").");
         }
 
-        if (!agendamentoRepository.buscarConflitosDoProfissional(
-                profissional.getId(), StatusAgendamento.ATIVOS, inicio, fim, ignorarId).isEmpty()) {
+        if (!agendamentoRepository.buscarConflitosDoProfissionalNoEstabelecimento(
+                tenantContext.obterEstabelecimentoId(), profissional.getId(), StatusAgendamento.ATIVOS,
+                inicio, fim, ignorarId).isEmpty()) {
             throw new RegraNegocioException("Esse horário já está ocupado na agenda de " + profissional.getNome() + ".");
         }
 
-        if (!agendamentoRepository.buscarConflitosDoCliente(
-                cliente.getId(), StatusAgendamento.ATIVOS, inicio, fim, ignorarId).isEmpty()) {
+        if (!agendamentoRepository.buscarConflitosDoClienteNoEstabelecimento(
+                tenantContext.obterEstabelecimentoId(), cliente.getId(), StatusAgendamento.ATIVOS,
+                inicio, fim, ignorarId).isEmpty()) {
             throw new RegraNegocioException("O cliente já tem outro agendamento que coincide com esse horário.");
         }
     }
 
     private void validarLimitesDoCliente(Cliente cliente, LocalDateTime inicio) {
-        long ativosFuturos = agendamentoRepository.countByClienteIdAndStatusInAndInicioAfter(
-                cliente.getId(), StatusAgendamento.ATIVOS, agora());
+        long ativosFuturos = agendamentoRepository.countByClienteIdAndEstabelecimentoIdAndStatusInAndInicioAfter(
+                cliente.getId(), tenantContext.obterEstabelecimentoId(), StatusAgendamento.ATIVOS, agora());
         if (ativosFuturos >= regras.getMaximoAgendamentosAtivosPorCliente()) {
             throw new RegraNegocioException("O cliente já tem " + ativosFuturos
                     + " agendamentos ativos, que é o limite permitido.");
         }
 
         LocalDate dia = inicio.toLocalDate();
-        long noDia = agendamentoRepository.contarDoClienteNoPeriodo(
-                cliente.getId(), StatusAgendamento.ATIVOS, dia.atStartOfDay(), dia.plusDays(1).atStartOfDay());
+        long noDia = agendamentoRepository.contarDoClienteNoPeriodoNoEstabelecimento(
+                tenantContext.obterEstabelecimentoId(), cliente.getId(), StatusAgendamento.ATIVOS,
+                dia.atStartOfDay(), dia.plusDays(1).atStartOfDay());
         if (noDia >= regras.getMaximoAgendamentosPorClientePorDia()) {
             throw new RegraNegocioException("O cliente já tem " + noDia
                     + " agendamento(s) nesse dia, que é o limite diário.");
@@ -330,22 +342,22 @@ public class AgendamentoService {
     }
 
     private Agendamento buscarEntidade(Long id) {
-        return agendamentoRepository.findById(id)
+        return agendamentoRepository.findByIdAndEstabelecimentoId(id, tenantContext.obterEstabelecimentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Agendamento", id));
     }
 
     private Cliente buscarCliente(Long id) {
-        return clienteRepository.findById(id)
+        return clienteRepository.findByIdAndEstabelecimentoId(id, tenantContext.obterEstabelecimentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", id));
     }
 
     private Profissional buscarProfissional(Long id) {
-        return profissionalRepository.findById(id)
+        return profissionalRepository.findByIdAndEstabelecimentoId(id, tenantContext.obterEstabelecimentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Profissional", id));
     }
 
     private Servico buscarServico(Long id) {
-        return servicoRepository.findById(id)
+        return servicoRepository.findByIdAndEstabelecimentoId(id, tenantContext.obterEstabelecimentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Serviço", id));
     }
 

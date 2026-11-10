@@ -21,13 +21,14 @@ public class ServicoService {
     private final ServicoRepository servicoRepository;
     private final ProfissionalRepository profissionalRepository;
     private final AgendamentoRepository agendamentoRepository;
+    private final TenantContext tenantContext;
 
     public List<ServicoDTO> listar() {
-        return servicoRepository.findAllByOrderByNomeAsc().stream().map(this::paraDTO).toList();
+        return servicoRepository.findAllByEstabelecimentoIdOrderByNomeAsc(tenantContext.obterEstabelecimentoId()).stream().map(this::paraDTO).toList();
     }
 
     public List<ServicoDTO> listarAtivos() {
-        return servicoRepository.findByAtivoTrueOrderByNomeAsc().stream().map(this::paraDTO).toList();
+        return servicoRepository.findByEstabelecimentoIdAndAtivoTrueOrderByNomeAsc(tenantContext.obterEstabelecimentoId()).stream().map(this::paraDTO).toList();
     }
 
     public ServicoDTO buscar(Long id) {
@@ -38,13 +39,16 @@ public class ServicoService {
     public ServicoDTO salvar(ServicoDTO dto) {
         String nome = dto.getNome().trim();
 
-        servicoRepository.findByNomeIgnoreCase(nome).ifPresent(existente -> {
+        servicoRepository.findByNomeIgnoreCaseAndEstabelecimentoId(nome, tenantContext.obterEstabelecimentoId()).ifPresent(existente -> {
             if (dto.getId() == null || !existente.getId().equals(dto.getId())) {
                 throw new RegraNegocioException("Já existe um serviço com esse nome.");
             }
         });
 
         Servico servico = dto.getId() == null ? new Servico() : buscarEntidade(dto.getId());
+        if (dto.getId() == null) {
+            servico.setEstabelecimento(tenantContext.obterEstabelecimento());
+        }
         servico.setNome(nome);
         servico.setDescricao(TextoUtil.limparOuNulo(dto.getDescricao()));
         servico.setDuracaoMinutos(dto.getDuracaoMinutos());
@@ -56,18 +60,18 @@ public class ServicoService {
     @Transactional
     public void excluir(Long id) {
         Servico servico = buscarEntidade(id);
-        if (agendamentoRepository.existsByServicoId(id)) {
+        if (agendamentoRepository.existsByServicoIdAndEstabelecimentoId(id, tenantContext.obterEstabelecimentoId())) {
             throw new RegraNegocioException("Este serviço já foi usado em agendamentos e não pode ser excluído. "
                     + "Desative-o para que ele deixe de ser oferecido.");
         }
-        if (profissionalRepository.existsByServicosId(id)) {
+        if (profissionalRepository.existsByEstabelecimentoIdAndServicosId(tenantContext.obterEstabelecimentoId(), id)) {
             throw new RegraNegocioException("Remova o serviço dos profissionais que o realizam antes de excluí-lo.");
         }
         servicoRepository.delete(servico);
     }
 
     private Servico buscarEntidade(Long id) {
-        return servicoRepository.findById(id)
+        return servicoRepository.findByIdAndEstabelecimentoId(id, tenantContext.obterEstabelecimentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Serviço", id));
     }
 

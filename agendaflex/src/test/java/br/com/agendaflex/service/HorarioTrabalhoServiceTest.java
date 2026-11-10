@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import br.com.agendaflex.dtos.HorarioTrabalhoDTO;
+import br.com.agendaflex.entity.Estabelecimento;
 import br.com.agendaflex.entity.HorarioTrabalho;
 import br.com.agendaflex.entity.Profissional;
 import br.com.agendaflex.exception.RegraNegocioException;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import static org.mockito.Mockito.lenient;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,23 +36,30 @@ class HorarioTrabalhoServiceTest {
     @Mock
     private ProfissionalRepository profissionalRepository;
 
+    @Mock
+    private TenantContext tenantContext;
+
     private HorarioTrabalhoService horarioService;
     private Profissional profissional;
 
     @BeforeEach
     void preparar() {
-        horarioService = new HorarioTrabalhoService(horarioRepository, profissionalRepository);
+        Estabelecimento estabelecimento = new Estabelecimento("Principal", "principal", null, null);
+        estabelecimento.setId(1L);
+        when(tenantContext.obterEstabelecimentoId()).thenReturn(1L);
+        lenient().when(tenantContext.obterEstabelecimento()).thenReturn(estabelecimento);
+        horarioService = new HorarioTrabalhoService(horarioRepository, profissionalRepository, tenantContext);
         profissional = new Profissional("Ana", "Cabeleireira");
         profissional.setId(1L);
 
-        lenient().when(profissionalRepository.findById(1L)).thenReturn(Optional.of(profissional));
+        lenient().when(profissionalRepository.findByIdAndEstabelecimentoId(1L, 1L)).thenReturn(Optional.of(profissional));
     }
 
     @Test
     @DisplayName("Cadastra uma janela de expediente válida")
     void cadastraHorarioValido() {
         HorarioTrabalhoDTO dto = novoHorario(LocalTime.of(8, 0), LocalTime.of(12, 0));
-        when(horarioRepository.findByProfissionalIdAndDiaSemanaOrderByHoraInicio(1L, DayOfWeek.MONDAY))
+        when(horarioRepository.findByEstabelecimentoIdAndProfissionalIdAndDiaSemanaOrderByHoraInicio(1L, 1L, DayOfWeek.MONDAY))
                 .thenReturn(List.of());
         when(horarioRepository.save(any(HorarioTrabalho.class)))
                 .thenAnswer(invocacao -> invocacao.getArgument(0));
@@ -82,7 +91,7 @@ class HorarioTrabalhoServiceTest {
                 profissional, DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(12, 0));
         HorarioTrabalhoDTO dto = novoHorario(LocalTime.of(11, 30), LocalTime.of(15, 0));
 
-        when(horarioRepository.findByProfissionalIdAndDiaSemanaOrderByHoraInicio(1L, DayOfWeek.MONDAY))
+        when(horarioRepository.findByEstabelecimentoIdAndProfissionalIdAndDiaSemanaOrderByHoraInicio(1L, 1L, DayOfWeek.MONDAY))
                 .thenReturn(List.of(existente));
 
         assertThatThrownBy(() -> horarioService.adicionar(dto))
@@ -99,7 +108,7 @@ class HorarioTrabalhoServiceTest {
                 profissional, DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(12, 0));
         HorarioTrabalhoDTO dto = novoHorario(LocalTime.of(12, 0), LocalTime.of(17, 0));
 
-        when(horarioRepository.findByProfissionalIdAndDiaSemanaOrderByHoraInicio(1L, DayOfWeek.MONDAY))
+        when(horarioRepository.findByEstabelecimentoIdAndProfissionalIdAndDiaSemanaOrderByHoraInicio(1L, 1L, DayOfWeek.MONDAY))
                 .thenReturn(List.of(existente));
         when(horarioRepository.save(any(HorarioTrabalho.class)))
                 .thenAnswer(invocacao -> invocacao.getArgument(0));
@@ -116,7 +125,7 @@ class HorarioTrabalhoServiceTest {
         HorarioTrabalho horario = new HorarioTrabalho(
                 profissional, DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(12, 0));
         horario.setId(5L);
-        when(horarioRepository.findById(5L)).thenReturn(Optional.of(horario));
+        when(horarioRepository.findByIdAndEstabelecimentoId(5L, 1L)).thenReturn(Optional.of(horario));
 
         horarioService.remover(5L);
 
