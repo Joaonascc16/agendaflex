@@ -12,8 +12,10 @@ import br.com.agendaflex.repository.ServicoRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest(properties = "agendaflex.dados-demo=true")
+@Transactional
 class TenantBootstrapTest {
 
     @Autowired private EstabelecimentoRepository estabelecimentoRepository;
