@@ -1,8 +1,5 @@
 package br.com.agendaflex.entity;
 
-import br.com.agendaflex.enums.StatusAgendamento;
-import br.com.agendaflex.exception.RegraNegocioException;
-import br.com.agendaflex.util.TempoUtil;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,6 +14,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import br.com.agendaflex.enums.StatusAgendamento;
+import br.com.agendaflex.exception.RegraNegocioException;
+import br.com.agendaflex.util.TempoUtil;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.Getter;
@@ -36,6 +36,10 @@ public class Agendamento {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "estabelecimento_id")
+    private Estabelecimento estabelecimento;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cliente_id", nullable = false)
