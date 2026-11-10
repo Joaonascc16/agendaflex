@@ -23,6 +23,10 @@
             <a th:href="@{/servicos}" th:classappend="${paginaAtiva == 'servicos'} ? 'ativo'">Serviços</a>
         </nav>
         <a class="botao botao-destaque" th:href="@{/agendamentos/novo}">Novo agendamento</a>
+        <a class="link-trocar-estabelecimento" th:href="@{/selecionar-estabelecimento}">Trocar estabelecimento</a>
+        <form th:action="@{/logout}" method="post" class="formulario-sair-lateral">
+            <button type="submit" class="link-sair">Sair da conta</button>
+        </form>
     </aside>
 
     <main class="conteudo">

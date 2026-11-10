@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Acesso pendente – AgendaFlex</title>
+    <link rel="stylesheet" th:href="@{/css/agendaflex.css}">
+</head>
+<body class="pagina-autenticacao">
+<main class="cartao-autenticacao">
+    <a class="marca-autenticacao" th:href="@{/}">AgendaFlex</a>
+    <p class="sobretitulo">CONTA SEM VÍNCULO ATIVO</p>
+    <h1>Seu acesso ainda não está liberado</h1>
+    <p class="texto-suave">Sua conta não possui vínculo ativo com um estabelecimento. Solicite ao administrador que confira seu acesso.</p>
+    <form th:action="@{/logout}" method="post">
+        <button type="submit" class="botao botao-destaque botao-autenticacao">Sair da conta</button>
+    </form>
+</main>
+</body>
+</html>

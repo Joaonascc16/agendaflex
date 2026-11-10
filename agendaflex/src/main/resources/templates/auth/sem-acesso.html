@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Acesso não autorizado – AgendaFlex</title>
+    <link rel="stylesheet" th:href="@{/css/agendaflex.css}">
+</head>
+<body class="pagina-autenticacao">
+<main class="cartao-autenticacao">
+    <a class="marca-autenticacao" th:href="@{/}">AgendaFlex</a>
+    <p class="sobretitulo">PERMISSÃO INSUFICIENTE</p>
+    <h1>Você não tem acesso a esta área</h1>
+    <p class="texto-suave">A conta atual não possui a permissão necessária para abrir esta página no estabelecimento selecionado.</p>
+    <a class="botao botao-destaque botao-autenticacao" th:href="@{/selecionar-estabelecimento}">Trocar estabelecimento</a>
+</main>
+</body>
+</html>
