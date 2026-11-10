@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import static org.mockito.Mockito.lenient;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,8 +41,8 @@ class ClienteServiceTest {
     void preparar() {
         Estabelecimento estabelecimento = new Estabelecimento("Principal", "principal", null, null);
         estabelecimento.setId(1L);
-        when(tenantContext.obterEstabelecimentoId()).thenReturn(1L);
-        when(tenantContext.obterEstabelecimento()).thenReturn(estabelecimento);
+        lenient().when(tenantContext.obterEstabelecimentoId()).thenReturn(1L);
+        lenient().when(tenantContext.obterEstabelecimento()).thenReturn(estabelecimento);
         clienteService = new ClienteService(
                 clienteRepository,
                 agendamentoRepository,
