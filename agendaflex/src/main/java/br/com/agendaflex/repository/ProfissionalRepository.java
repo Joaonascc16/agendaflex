@@ -41,7 +41,5 @@ public interface ProfissionalRepository extends JpaRepository<Profissional, Long
             @Param("estabelecimentoId") Long estabelecimentoId,
             @Param("servicoId") Long servicoId);
 
-    List<Profissional> findAllByEstabelecimentoIdAndIdIn(Long estabelecimentoId, List<Long> ids);
-
     boolean existsByEstabelecimentoIdAndServicosId(Long estabelecimentoId, Long servicoId);
 }
