@@ -13,11 +13,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
+ * Valida o renderizador Thymeleaf sem testar autenticação (coberta em SecurityAuthenticationTest).
  * Sobe a aplicação inteira (com os dados de exemplo) e abre cada tela.
  * Se algum template Thymeleaf tiver erro de sintaxe ou de variável, o teste acusa aqui.
  */
 @SpringBootTest
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 class PaginasSmokeTest {
 
     @Autowired

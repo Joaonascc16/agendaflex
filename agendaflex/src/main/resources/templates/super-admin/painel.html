@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Administração geral – AgendaFlex</title>
+    <link rel="stylesheet" th:href="@{/css/agendaflex.css}">
+</head>
+<body class="pagina-autenticacao">
+<main class="cartao-autenticacao cartao-super-admin">
+    <a class="marca-autenticacao" th:href="@{/super-admin}">AgendaFlex</a>
+    <p class="sobretitulo">ADMINISTRAÇÃO DA PLATAFORMA</p>
+    <h1>Painel geral</h1>
+    <p class="texto-suave">Olá, <strong th:text="${nomeAdministrador}">Administrador</strong>. Este é o ambiente administrativo global.</p>
+
+    <div class="resumo-super-admin">
+        <div>
+            <strong th:text="${totalEstabelecimentos}">0</strong>
+            <span>Estabelecimentos cadastrados</span>
+        </div>
+        <div>
+            <strong th:text="${totalUsuarios}">0</strong>
+            <span>Contas de usuário</span>
+        </div>
+    </div>
+
+    <a class="botao botao-destaque botao-autenticacao" th:href="@{/selecionar-estabelecimento}">
+        Acessar um estabelecimento
+    </a>
+    <form th:action="@{/logout}" method="post" class="formulario-sair">
+        <button type="submit" class="link-sutil">Sair da conta</button>
+    </form>
+    <p class="nota-autenticacao">O gerenciamento completo de estabelecimentos, usuários e situação das contas será desenvolvido na etapa do painel SUPER_ADMIN.</p>
+</main>
+</body>
+</html>

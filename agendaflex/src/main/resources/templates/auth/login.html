@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Entrar – AgendaFlex</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/agendaflex.css}">
+</head>
+<body class="pagina-autenticacao">
+<main class="cartao-autenticacao">
+    <a class="marca-autenticacao" th:href="@{/login}">AgendaFlex</a>
+    <p class="sobretitulo">PLATAFORMA DE AGENDAMENTOS</p>
+    <h1>Entre na sua conta</h1>
+    <p class="texto-suave">Acesse o painel do seu estabelecimento.</p>
+
+    <div class="alerta alerta-erro" role="alert" th:if="${param.erro}">
+        E-mail ou senha inválidos. Verifique os dados e tente novamente.
+    </div>
+    <div class="alerta alerta-sucesso" role="status" th:if="${param.logout}">
+        Você saiu da sua conta com segurança.
+    </div>
+
+    <form th:action="@{/login}" method="post" class="formulario-autenticacao">
+        <label for="email">E-mail</label>
+        <input id="email" name="email" type="email" autocomplete="username"
+               placeholder="voce@exemplo.com" required autofocus>
+
+        <label for="senha">Senha</label>
+        <input id="senha" name="senha" type="password" autocomplete="current-password"
+               placeholder="Sua senha" required>
+
+        <button type="submit" class="botao botao-destaque botao-autenticacao">Entrar</button>
+    </form>
+    <p class="nota-autenticacao">Ainda não tem acesso? O cadastro público de estabelecimentos será disponibilizado em uma próxima etapa.</p>
+</main>
+</body>
+</html>

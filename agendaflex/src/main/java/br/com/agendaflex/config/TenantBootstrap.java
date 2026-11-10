@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 @RequiredArgsConstructor
-@Order(Ordered.LOWEST_PRECEDENCE)
+@Order(Ordered.LOWEST_PRECEDENCE - 100)
 public class TenantBootstrap implements CommandLineRunner {
 
     public static final String SLUG_ESTABELECIMENTO_LEGADO = "agendaflex-principal";

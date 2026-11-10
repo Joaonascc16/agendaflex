@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Selecionar estabelecimento – AgendaFlex</title>
+    <link rel="stylesheet" th:href="@{/css/agendaflex.css}">
+</head>
+<body class="pagina-autenticacao">
+<main class="cartao-autenticacao cartao-selecao">
+    <a class="marca-autenticacao" th:href="@{/}">AgendaFlex</a>
+    <p class="sobretitulo">ACESSO MULTIESTABELECIMENTO</p>
+    <h1>Onde você deseja entrar?</h1>
+    <p class="texto-suave">Sua conta possui acesso a mais de um estabelecimento. Selecione o contexto desta sessão.</p>
+
+    <div class="alerta alerta-erro" role="alert" th:if="${erro}" th:text="${erro}"></div>
+
+    <form th:action="@{/selecionar-estabelecimento}" method="post" class="formulario-autenticacao">
+        <label class="opcao-estabelecimento" th:each="vinculo : ${vinculos}">
+            <input type="radio" name="estabelecimentoId"
+                   th:value="${vinculo.estabelecimento.id}" required>
+            <span>
+                <strong th:text="${vinculo.estabelecimento.nome}">Estabelecimento</strong>
+                <small th:text="${vinculo.papel}">ADMIN</small>
+            </span>
+        </label>
+        <button type="submit" class="botao botao-destaque botao-autenticacao">Continuar</button>
+    </form>
+    <form th:action="@{/logout}" method="post" class="formulario-sair">
+        <button type="submit" class="link-sutil">Sair da conta</button>
+    </form>
+</main>
+</body>
+</html>
