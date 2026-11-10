@@ -27,11 +27,13 @@ public class BloqueioService {
     private final ProfissionalRepository profissionalRepository;
     private final AgendamentoRepository agendamentoRepository;
     private final Clock clock;
+    private final TenantContext tenantContext;
 
     /** Bloqueios que ainda não terminaram. */
     public List<BloqueioDTO> listarVigentes(Long profissionalId) {
         return bloqueioRepository
-                .findByProfissionalIdAndFimAfterOrderByInicio(profissionalId, LocalDateTime.now(clock))
+                .findByEstabelecimentoIdAndProfissionalIdAndFimAfterOrderByInicio(
+                        tenantContext.obterEstabelecimentoId(), profissionalId, LocalDateTime.now(clock))
                 .stream()
                 .map(this::paraDTO)
                 .toList();
@@ -39,7 +41,7 @@ public class BloqueioService {
 
     @Transactional
     public BloqueioDTO criar(BloqueioDTO dto) {
-        Profissional profissional = profissionalRepository.findById(dto.getProfissionalId())
+        Profissional profissional = profissionalRepository.findByIdAndEstabelecimentoId(dto.getProfissionalId(), tenantContext.obterEstabelecimentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Profissional", dto.getProfissionalId()));
 
         if (!dto.getFim().isAfter(dto.getInicio())) {
@@ -49,20 +51,22 @@ public class BloqueioService {
             throw new RegraNegocioException("O bloqueio precisa terminar no futuro.");
         }
 
-        List<Agendamento> conflitos = agendamentoRepository.buscarConflitosDoProfissional(
-                profissional.getId(), StatusAgendamento.ATIVOS, dto.getInicio(), dto.getFim(), 0L);
+        List<Agendamento> conflitos = agendamentoRepository.buscarConflitosDoProfissionalNoEstabelecimento(
+                tenantContext.obterEstabelecimentoId(), profissional.getId(), StatusAgendamento.ATIVOS,
+                dto.getInicio(), dto.getFim(), 0L);
         if (!conflitos.isEmpty()) {
             throw new RegraNegocioException("Existem " + conflitos.size() + " agendamento(s) ativo(s) nesse período. "
                     + "Reagende ou cancele esses atendimentos antes de bloquear a agenda.");
         }
 
         Bloqueio bloqueio = new Bloqueio(profissional, dto.getInicio(), dto.getFim(), dto.getMotivo().trim());
+        bloqueio.setEstabelecimento(tenantContext.obterEstabelecimento());
         return paraDTO(bloqueioRepository.save(bloqueio));
     }
 
     @Transactional
     public void remover(Long id) {
-        Bloqueio bloqueio = bloqueioRepository.findById(id)
+        Bloqueio bloqueio = bloqueioRepository.findByIdAndEstabelecimentoId(id, tenantContext.obterEstabelecimentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Bloqueio", id));
         bloqueioRepository.delete(bloqueio);
     }

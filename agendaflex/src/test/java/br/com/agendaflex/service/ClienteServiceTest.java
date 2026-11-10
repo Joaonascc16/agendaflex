@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import br.com.agendaflex.config.RegrasAgendamentoProperties;
 import br.com.agendaflex.dtos.ClienteDTO;
 import br.com.agendaflex.entity.Cliente;
+import br.com.agendaflex.entity.Estabelecimento;
 import br.com.agendaflex.exception.RegraNegocioException;
 import br.com.agendaflex.repository.AgendamentoRepository;
 import br.com.agendaflex.repository.ClienteRepository;
@@ -30,14 +31,22 @@ class ClienteServiceTest {
     @Mock
     private AgendamentoRepository agendamentoRepository;
 
+    @Mock
+    private TenantContext tenantContext;
+
     private ClienteService clienteService;
 
     @BeforeEach
     void preparar() {
+        Estabelecimento estabelecimento = new Estabelecimento("Principal", "principal", null, null);
+        estabelecimento.setId(1L);
+        when(tenantContext.obterEstabelecimentoId()).thenReturn(1L);
+        when(tenantContext.obterEstabelecimento()).thenReturn(estabelecimento);
         clienteService = new ClienteService(
                 clienteRepository,
                 agendamentoRepository,
-                new RegrasAgendamentoProperties()
+                new RegrasAgendamentoProperties(),
+                tenantContext
         );
     }
 
@@ -47,7 +56,7 @@ class ClienteServiceTest {
         ClienteDTO dto = novoCliente();
         dto.setEmail("  MARIA@EMAIL.COM  ");
 
-        when(clienteRepository.findByEmailIgnoreCase("maria@email.com"))
+        when(clienteRepository.findByEmailIgnoreCaseAndEstabelecimentoId("maria@email.com", 1L))
                 .thenReturn(Optional.empty());
         when(clienteRepository.save(any(Cliente.class)))
                 .thenAnswer(invocacao -> invocacao.getArgument(0));
@@ -64,7 +73,7 @@ class ClienteServiceTest {
     void rejeitaEmailDuplicado() {
         Cliente existente = new Cliente("Outra pessoa", "maria@email.com", null);
         existente.setId(10L);
-        when(clienteRepository.findByEmailIgnoreCase("maria@email.com"))
+        when(clienteRepository.findByEmailIgnoreCaseAndEstabelecimentoId("maria@email.com", 1L))
                 .thenReturn(Optional.of(existente));
 
         assertThatThrownBy(() -> clienteService.salvar(novoCliente()))
@@ -79,8 +88,8 @@ class ClienteServiceTest {
     void impedeExcluirClienteComHistorico() {
         Cliente cliente = new Cliente("Maria Silva", "maria@email.com", null);
         cliente.setId(1L);
-        when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
-        when(agendamentoRepository.existsByClienteId(1L)).thenReturn(true);
+        when(clienteRepository.findByIdAndEstabelecimentoId(1L, 1L)).thenReturn(Optional.of(cliente));
+        when(agendamentoRepository.existsByClienteIdAndEstabelecimentoId(1L, 1L)).thenReturn(true);
 
         assertThatThrownBy(() -> clienteService.excluir(1L))
                 .isInstanceOf(RegraNegocioException.class)
@@ -94,8 +103,8 @@ class ClienteServiceTest {
     void excluiClienteSemHistorico() {
         Cliente cliente = new Cliente("Maria Silva", "maria@email.com", null);
         cliente.setId(1L);
-        when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
-        when(agendamentoRepository.existsByClienteId(1L)).thenReturn(false);
+        when(clienteRepository.findByIdAndEstabelecimentoId(1L, 1L)).thenReturn(Optional.of(cliente));
+        when(agendamentoRepository.existsByClienteIdAndEstabelecimentoId(1L, 1L)).thenReturn(false);
 
         clienteService.excluir(1L);
 
@@ -109,7 +118,7 @@ class ClienteServiceTest {
         cliente.setId(1L);
         cliente.registrarFalta();
         cliente.registrarFalta();
-        when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
+        when(clienteRepository.findByIdAndEstabelecimentoId(1L, 1L)).thenReturn(Optional.of(cliente));
 
         clienteService.zerarFaltas(1L);
 

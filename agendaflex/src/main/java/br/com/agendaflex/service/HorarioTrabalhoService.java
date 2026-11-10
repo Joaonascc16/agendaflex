@@ -20,10 +20,11 @@ public class HorarioTrabalhoService {
 
     private final HorarioTrabalhoRepository horarioTrabalhoRepository;
     private final ProfissionalRepository profissionalRepository;
+    private final TenantContext tenantContext;
 
     /** Ordenado de segunda a domingo e, dentro do dia, pelo horário inicial. */
     public List<HorarioTrabalhoDTO> listarPorProfissional(Long profissionalId) {
-        return horarioTrabalhoRepository.findByProfissionalId(profissionalId).stream()
+        return horarioTrabalhoRepository.findByEstabelecimentoIdAndProfissionalId(tenantContext.obterEstabelecimentoId(), profissionalId).stream()
                 .sorted(Comparator.comparing((HorarioTrabalho h) -> h.getDiaSemana().getValue())
                         .thenComparing(HorarioTrabalho::getHoraInicio))
                 .map(this::paraDTO)
@@ -32,7 +33,7 @@ public class HorarioTrabalhoService {
 
     @Transactional
     public HorarioTrabalhoDTO adicionar(HorarioTrabalhoDTO dto) {
-        Profissional profissional = profissionalRepository.findById(dto.getProfissionalId())
+        Profissional profissional = profissionalRepository.findByIdAndEstabelecimentoId(dto.getProfissionalId(), tenantContext.obterEstabelecimentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Profissional", dto.getProfissionalId()));
 
         if (!dto.getHoraFim().isAfter(dto.getHoraInicio())) {
@@ -40,7 +41,8 @@ public class HorarioTrabalhoService {
         }
 
         boolean sobrepoe = horarioTrabalhoRepository
-                .findByProfissionalIdAndDiaSemanaOrderByHoraInicio(profissional.getId(), dto.getDiaSemana())
+                .findByEstabelecimentoIdAndProfissionalIdAndDiaSemanaOrderByHoraInicio(
+                        tenantContext.obterEstabelecimentoId(), profissional.getId(), dto.getDiaSemana())
                 .stream()
                 .anyMatch(h -> h.sobrepoe(dto.getHoraInicio(), dto.getHoraFim()));
         if (sobrepoe) {
@@ -49,12 +51,13 @@ public class HorarioTrabalhoService {
 
         HorarioTrabalho horario = new HorarioTrabalho(
                 profissional, dto.getDiaSemana(), dto.getHoraInicio(), dto.getHoraFim());
+        horario.setEstabelecimento(tenantContext.obterEstabelecimento());
         return paraDTO(horarioTrabalhoRepository.save(horario));
     }
 
     @Transactional
     public void remover(Long id) {
-        HorarioTrabalho horario = horarioTrabalhoRepository.findById(id)
+        HorarioTrabalho horario = horarioTrabalhoRepository.findByIdAndEstabelecimentoId(id, tenantContext.obterEstabelecimentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Horário de trabalho", id));
         horarioTrabalhoRepository.delete(horario);
     }

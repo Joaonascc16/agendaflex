@@ -31,18 +31,19 @@ public class ProfissionalService {
     private final HorarioTrabalhoRepository horarioTrabalhoRepository;
     private final BloqueioRepository bloqueioRepository;
     private final Clock clock;
+    private final TenantContext tenantContext;
 
     public List<ProfissionalDTO> listar() {
-        return profissionalRepository.findAllByOrderByNomeAsc().stream().map(this::paraDTO).toList();
+        return profissionalRepository.findAllByEstabelecimentoIdOrderByNomeAsc(tenantContext.obterEstabelecimentoId()).stream().map(this::paraDTO).toList();
     }
 
     public List<ProfissionalDTO> listarAtivos() {
-        return profissionalRepository.findByAtivoTrueOrderByNomeAsc().stream().map(this::paraDTO).toList();
+        return profissionalRepository.findByEstabelecimentoIdAndAtivoTrueOrderByNomeAsc(tenantContext.obterEstabelecimentoId()).stream().map(this::paraDTO).toList();
     }
 
     /** Profissionais ativos que realizam o serviço informado. */
     public List<ProfissionalDTO> listarPorServico(Long servicoId) {
-        return profissionalRepository.buscarAtivosPorServico(servicoId).stream().map(this::paraDTO).toList();
+        return profissionalRepository.buscarAtivosPorServicoNoEstabelecimento(tenantContext.obterEstabelecimentoId(), servicoId).stream().map(this::paraDTO).toList();
     }
 
     public ProfissionalDTO buscar(Long id) {
@@ -55,19 +56,29 @@ public class ProfissionalService {
 
         // Regra: não dá para desativar quem ainda tem atendimentos marcados.
         if (profissional.getId() != null && profissional.isAtivo() && !dto.isAtivo()
-                && agendamentoRepository.existsByProfissionalIdAndStatusInAndInicioAfter(
-                        profissional.getId(), StatusAgendamento.ATIVOS, LocalDateTime.now(clock))) {
+                && agendamentoRepository.existsByProfissionalIdAndEstabelecimentoIdAndStatusInAndInicioAfter(
+                        profissional.getId(), tenantContext.obterEstabelecimentoId(),
+                        StatusAgendamento.ATIVOS, LocalDateTime.now(clock))) {
             throw new RegraNegocioException("Este profissional ainda tem agendamentos futuros. "
                     + "Reagende ou cancele esses atendimentos antes de desativá-lo.");
         }
 
+        if (dto.getId() == null) {
+            profissional.setEstabelecimento(tenantContext.obterEstabelecimento());
+        }
         profissional.setNome(dto.getNome().trim());
         profissional.setEspecialidade(TextoUtil.limparOuNulo(dto.getEspecialidade()));
         profissional.setAtivo(dto.isAtivo());
 
         List<Long> ids = dto.getServicosIds() == null ? List.of() : dto.getServicosIds();
+        List<Long> idsUnicos = ids.stream().distinct().toList();
+        List<Servico> servicosDoEstabelecimento = idsUnicos.isEmpty() ? List.of()
+                : servicoRepository.findAllByEstabelecimentoIdAndIdIn(tenantContext.obterEstabelecimentoId(), idsUnicos);
+        if (servicosDoEstabelecimento.size() != idsUnicos.size()) {
+            throw new RegraNegocioException("Um ou mais serviços não pertencem a este estabelecimento.");
+        }
         profissional.getServicos().clear();
-        profissional.getServicos().addAll(servicoRepository.findAllById(ids));
+        profissional.getServicos().addAll(servicosDoEstabelecimento);
 
         return paraDTO(profissionalRepository.save(profissional));
     }
@@ -75,17 +86,17 @@ public class ProfissionalService {
     @Transactional
     public void excluir(Long id) {
         Profissional profissional = buscarEntidade(id);
-        if (agendamentoRepository.existsByProfissionalId(id)) {
+        if (agendamentoRepository.existsByProfissionalIdAndEstabelecimentoId(id, tenantContext.obterEstabelecimentoId())) {
             throw new RegraNegocioException("Este profissional tem histórico de agendamentos e não pode ser excluído. "
                     + "Desative o cadastro para que ele deixe de receber novos agendamentos.");
         }
-        horarioTrabalhoRepository.deleteByProfissionalId(id);
-        bloqueioRepository.deleteByProfissionalId(id);
+        horarioTrabalhoRepository.deleteByEstabelecimentoIdAndProfissionalId(tenantContext.obterEstabelecimentoId(), id);
+        bloqueioRepository.deleteByEstabelecimentoIdAndProfissionalId(tenantContext.obterEstabelecimentoId(), id);
         profissionalRepository.delete(profissional);
     }
 
     private Profissional buscarEntidade(Long id) {
-        return profissionalRepository.findById(id)
+        return profissionalRepository.findByIdAndEstabelecimentoId(id, tenantContext.obterEstabelecimentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Profissional", id));
     }
 

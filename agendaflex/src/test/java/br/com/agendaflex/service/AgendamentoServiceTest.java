@@ -14,6 +14,7 @@ import br.com.agendaflex.dtos.SlotDTO;
 import br.com.agendaflex.entity.Agendamento;
 import br.com.agendaflex.entity.Bloqueio;
 import br.com.agendaflex.entity.Cliente;
+import br.com.agendaflex.entity.Estabelecimento;
 import br.com.agendaflex.entity.HorarioTrabalho;
 import br.com.agendaflex.entity.Profissional;
 import br.com.agendaflex.entity.Servico;
@@ -67,6 +68,7 @@ class AgendamentoServiceTest {
     @Mock private ServicoRepository servicoRepository;
     @Mock private HorarioTrabalhoRepository horarioTrabalhoRepository;
     @Mock private BloqueioRepository bloqueioRepository;
+    @Mock private TenantContext tenantContext;
 
     private AgendamentoService service;
     private Cliente cliente;
@@ -77,8 +79,12 @@ class AgendamentoServiceTest {
     void preparar() {
         Clock relogio = Clock.fixed(AGORA.atZone(ZONA).toInstant(), ZONA);
         RegrasAgendamentoProperties regras = new RegrasAgendamentoProperties();
+        Estabelecimento estabelecimento = new Estabelecimento("Principal", "principal", null, null);
+        estabelecimento.setId(1L);
+        lenient().when(tenantContext.obterEstabelecimentoId()).thenReturn(1L);
+        lenient().when(tenantContext.obterEstabelecimento()).thenReturn(estabelecimento);
         service = new AgendamentoService(agendamentoRepository, clienteRepository, profissionalRepository,
-                servicoRepository, horarioTrabalhoRepository, bloqueioRepository, regras, relogio);
+                servicoRepository, horarioTrabalhoRepository, bloqueioRepository, regras, tenantContext, relogio);
 
         servico = new Servico("Corte", null, 60, new BigDecimal("80.00"));
         servico.setId(10L);
@@ -90,14 +96,14 @@ class AgendamentoServiceTest {
         cliente = new Cliente("Maria", "maria@email.com", null);
         cliente.setId(1L);
 
-        lenient().when(clienteRepository.findById(1L)).thenReturn(Optional.of(cliente));
-        lenient().when(profissionalRepository.findById(2L)).thenReturn(Optional.of(profissional));
-        lenient().when(servicoRepository.findById(10L)).thenReturn(Optional.of(servico));
+        lenient().when(clienteRepository.findByIdAndEstabelecimentoId(1L, 1L)).thenReturn(Optional.of(cliente));
+        lenient().when(profissionalRepository.findByIdAndEstabelecimentoId(2L, 1L)).thenReturn(Optional.of(profissional));
+        lenient().when(servicoRepository.findByIdAndEstabelecimentoId(10L, 1L)).thenReturn(Optional.of(servico));
         lenient().when(agendamentoRepository.save(any(Agendamento.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
 
         // Padrão: a profissional atende de segunda a quarta, das 08:00 às 18:00
         for (DayOfWeek dia : List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY)) {
-            lenient().when(horarioTrabalhoRepository.findByProfissionalIdAndDiaSemanaOrderByHoraInicio(2L, dia))
+            lenient().when(horarioTrabalhoRepository.findByEstabelecimentoIdAndProfissionalIdAndDiaSemanaOrderByHoraInicio(1L, 2L, dia))
                     .thenReturn(List.of(new HorarioTrabalho(profissional, dia, LocalTime.of(8, 0), LocalTime.of(18, 0))));
         }
     }
@@ -116,7 +122,7 @@ class AgendamentoServiceTest {
         agendamento.setFim(servico.calcularFim(inicio));
         agendamento.setStatus(status);
         agendamento.setPrecoCobrado(servico.getPreco());
-        lenient().when(agendamentoRepository.findById(100L)).thenReturn(Optional.of(agendamento));
+        lenient().when(agendamentoRepository.findByIdAndEstabelecimentoId(100L, 1L)).thenReturn(Optional.of(agendamento));
         return agendamento;
     }
 
@@ -193,7 +199,7 @@ class AgendamentoServiceTest {
         @DisplayName("Rejeita período bloqueado e informa o motivo")
         void rejeitaPeriodoBloqueado() {
             Bloqueio ferias = new Bloqueio(profissional, TERCA.atStartOfDay(), TERCA.plusDays(3).atStartOfDay(), "Férias");
-            when(bloqueioRepository.buscarSobrepostos(eq(2L), any(), any())).thenReturn(List.of(ferias));
+            when(bloqueioRepository.buscarSobrepostosNoEstabelecimento(eq(1L), eq(2L), any(), any())).thenReturn(List.of(ferias));
 
             assertThatThrownBy(() -> service.criar(pedido(TERCA.atTime(14, 0))))
                     .isInstanceOf(RegraNegocioException.class)
@@ -203,7 +209,7 @@ class AgendamentoServiceTest {
         @Test
         @DisplayName("Rejeita horário já ocupado na agenda do profissional")
         void rejeitaConflitoComOutroAgendamentoDoProfissional() {
-            when(agendamentoRepository.buscarConflitosDoProfissional(eq(2L), any(), any(), any(), eq(0L)))
+            when(agendamentoRepository.buscarConflitosDoProfissionalNoEstabelecimento(eq(1L), eq(2L), any(), any(), any(), eq(0L)))
                     .thenReturn(List.of(new Agendamento()));
 
             assertThatThrownBy(() -> service.criar(pedido(TERCA.atTime(14, 0))))
@@ -214,7 +220,7 @@ class AgendamentoServiceTest {
         @Test
         @DisplayName("Rejeita quando o cliente já tem outro atendimento no mesmo horário")
         void rejeitaConflitoComOutroAgendamentoDoCliente() {
-            when(agendamentoRepository.buscarConflitosDoCliente(eq(1L), any(), any(), any(), eq(0L)))
+            when(agendamentoRepository.buscarConflitosDoClienteNoEstabelecimento(eq(1L), eq(1L), any(), any(), any(), eq(0L)))
                     .thenReturn(List.of(new Agendamento()));
 
             assertThatThrownBy(() -> service.criar(pedido(TERCA.atTime(14, 0))))
@@ -265,7 +271,7 @@ class AgendamentoServiceTest {
         @Test
         @DisplayName("Rejeita quando o cliente já tem o máximo de agendamentos ativos")
         void rejeitaLimiteDeAgendamentosAtivos() {
-            when(agendamentoRepository.countByClienteIdAndStatusInAndInicioAfter(eq(1L), any(), any()))
+            when(agendamentoRepository.countByClienteIdAndEstabelecimentoIdAndStatusInAndInicioAfter(eq(1L), eq(1L), any(), any()))
                     .thenReturn(3L);
 
             assertThatThrownBy(() -> service.criar(pedido(TERCA.atTime(14, 0))))
@@ -276,7 +282,7 @@ class AgendamentoServiceTest {
         @Test
         @DisplayName("Rejeita quando o cliente atinge o limite diário")
         void rejeitaLimiteDiario() {
-            when(agendamentoRepository.contarDoClienteNoPeriodo(eq(1L), any(), any(), any())).thenReturn(2L);
+            when(agendamentoRepository.contarDoClienteNoPeriodoNoEstabelecimento(eq(1L), eq(1L), any(), any(), any())).thenReturn(2L);
 
             assertThatThrownBy(() -> service.criar(pedido(TERCA.atTime(14, 0))))
                     .isInstanceOf(RegraNegocioException.class)
@@ -302,7 +308,7 @@ class AgendamentoServiceTest {
     class HorariosDisponiveis {
 
         private void expedienteDe9as12() {
-            when(horarioTrabalhoRepository.findByProfissionalIdAndDiaSemanaOrderByHoraInicio(2L, DayOfWeek.TUESDAY))
+            when(horarioTrabalhoRepository.findByEstabelecimentoIdAndProfissionalIdAndDiaSemanaOrderByHoraInicio(1L, 2L, DayOfWeek.TUESDAY))
                     .thenReturn(List.of(new HorarioTrabalho(profissional, DayOfWeek.TUESDAY, LocalTime.of(9, 0), LocalTime.of(12, 0))));
         }
 
@@ -328,7 +334,7 @@ class AgendamentoServiceTest {
             Agendamento existente = new Agendamento();
             existente.setInicio(TERCA.atTime(10, 0));
             existente.setFim(TERCA.atTime(11, 0));
-            when(agendamentoRepository.buscarConflitosDoProfissional(eq(2L), any(), any(), any(), eq(0L)))
+            when(agendamentoRepository.buscarConflitosDoProfissionalNoEstabelecimento(eq(1L), eq(2L), any(), any(), any(), eq(0L)))
                     .thenReturn(List.of(existente));
 
             List<SlotDTO> slots = service.horariosDisponiveis(2L, 10L, TERCA);
@@ -341,7 +347,7 @@ class AgendamentoServiceTest {
         void removeHorariosBloqueados() {
             expedienteDe9as12();
             Bloqueio consulta = new Bloqueio(profissional, TERCA.atTime(9, 0), TERCA.atTime(10, 30), "Consulta médica");
-            when(bloqueioRepository.buscarSobrepostos(eq(2L), any(), any())).thenReturn(List.of(consulta));
+            when(bloqueioRepository.buscarSobrepostosNoEstabelecimento(eq(1L), eq(2L), any(), any())).thenReturn(List.of(consulta));
 
             List<SlotDTO> slots = service.horariosDisponiveis(2L, 10L, TERCA);
 
@@ -488,7 +494,7 @@ class AgendamentoServiceTest {
         @DisplayName("Rejeita novo horário ocupado")
         void rejeitaHorarioOcupado() {
             agendamentoExistente(TERCA.atTime(14, 0), StatusAgendamento.AGENDADO);
-            when(agendamentoRepository.buscarConflitosDoProfissional(eq(2L), any(), any(), any(), eq(100L)))
+            when(agendamentoRepository.buscarConflitosDoProfissionalNoEstabelecimento(eq(1L), eq(2L), any(), any(), any(), eq(100L)))
                     .thenReturn(List.of(new Agendamento()));
 
             assertThatThrownBy(() -> service.reagendar(100L, TERCA.atTime(16, 0)))
@@ -521,14 +527,14 @@ class AgendamentoServiceTest {
         @DisplayName("Ao reagendar, o próprio horário atual não conta como ocupado nos horários livres")
         void horariosLivresIgnoramOProprioAgendamento() {
             agendamentoExistente(TERCA.atTime(14, 0), StatusAgendamento.AGENDADO);
-            when(horarioTrabalhoRepository.findByProfissionalIdAndDiaSemanaOrderByHoraInicio(2L, DayOfWeek.TUESDAY))
+            when(horarioTrabalhoRepository.findByEstabelecimentoIdAndProfissionalIdAndDiaSemanaOrderByHoraInicio(1L, 2L, DayOfWeek.TUESDAY))
                     .thenReturn(List.of(new HorarioTrabalho(profissional, DayOfWeek.TUESDAY, LocalTime.of(14, 0), LocalTime.of(15, 0))));
 
             // Sem ignorar: o repositório devolveria o próprio agendamento como conflito
             Agendamento proprio = new Agendamento();
             proprio.setInicio(TERCA.atTime(14, 0));
             proprio.setFim(TERCA.atTime(15, 0));
-            when(agendamentoRepository.buscarConflitosDoProfissional(eq(2L), any(), any(), any(), eq(0L)))
+            when(agendamentoRepository.buscarConflitosDoProfissionalNoEstabelecimento(eq(1L), eq(2L), any(), any(), any(), eq(0L)))
                     .thenReturn(List.of(proprio));
 
             assertThat(service.horariosDisponiveis(2L, 10L, TERCA)).isEmpty();

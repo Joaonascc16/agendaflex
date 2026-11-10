@@ -21,21 +21,21 @@ public class ClienteService {
     private final ClienteRepository clienteRepository;
     private final AgendamentoRepository agendamentoRepository;
     private final RegrasAgendamentoProperties regras;
+    private final TenantContext tenantContext;
 
     public List<ClienteDTO> listar(String busca) {
         List<Cliente> clientes;
         if (busca == null || busca.isBlank()) {
-            clientes = clienteRepository.findAllByOrderByNomeAsc();
+            clientes = clienteRepository.findAllByEstabelecimentoIdOrderByNomeAsc(tenantContext.obterEstabelecimentoId());
         } else {
             String termo = busca.trim();
-            clientes = clienteRepository
-                    .findByNomeContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNomeAsc(termo, termo);
+            clientes = clienteRepository.buscarPorTermoNoEstabelecimento(tenantContext.obterEstabelecimentoId(), termo);
         }
         return clientes.stream().map(this::paraDTO).toList();
     }
 
     public List<ClienteDTO> listarAtivos() {
-        return clienteRepository.findByAtivoTrueOrderByNomeAsc().stream().map(this::paraDTO).toList();
+        return clienteRepository.findByEstabelecimentoIdAndAtivoTrueOrderByNomeAsc(tenantContext.obterEstabelecimentoId()).stream().map(this::paraDTO).toList();
     }
 
     public ClienteDTO buscar(Long id) {
@@ -46,13 +46,16 @@ public class ClienteService {
     public ClienteDTO salvar(ClienteDTO dto) {
         String email = dto.getEmail().trim().toLowerCase();
 
-        clienteRepository.findByEmailIgnoreCase(email).ifPresent(existente -> {
+        clienteRepository.findByEmailIgnoreCaseAndEstabelecimentoId(email, tenantContext.obterEstabelecimentoId()).ifPresent(existente -> {
             if (dto.getId() == null || !existente.getId().equals(dto.getId())) {
                 throw new RegraNegocioException("Já existe um cliente cadastrado com esse e-mail.");
             }
         });
 
         Cliente cliente = dto.getId() == null ? new Cliente() : buscarEntidade(dto.getId());
+        if (dto.getId() == null) {
+            cliente.setEstabelecimento(tenantContext.obterEstabelecimento());
+        }
         cliente.setNome(dto.getNome().trim());
         cliente.setEmail(email);
         cliente.setTelefone(TextoUtil.limparOuNulo(dto.getTelefone()));
@@ -64,7 +67,7 @@ public class ClienteService {
     @Transactional
     public void excluir(Long id) {
         Cliente cliente = buscarEntidade(id);
-        if (agendamentoRepository.existsByClienteId(id)) {
+        if (agendamentoRepository.existsByClienteIdAndEstabelecimentoId(id, tenantContext.obterEstabelecimentoId())) {
             throw new RegraNegocioException("Este cliente tem histórico de agendamentos e não pode ser excluído. "
                     + "Desative o cadastro para que ele deixe de aparecer nos novos agendamentos.");
         }
@@ -77,7 +80,7 @@ public class ClienteService {
     }
 
     private Cliente buscarEntidade(Long id) {
-        return clienteRepository.findById(id)
+        return clienteRepository.findByIdAndEstabelecimentoId(id, tenantContext.obterEstabelecimentoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", id));
     }
 

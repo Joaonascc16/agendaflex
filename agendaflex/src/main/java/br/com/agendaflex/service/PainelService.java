@@ -42,6 +42,7 @@ public class PainelService {
     private final AgendamentoService agendamentoService;
     private final RegrasAgendamentoProperties regras;
     private final Clock clock;
+    private final TenantContext tenantContext;
 
     public PainelDTO resumo() {
         LocalDateTime agora = LocalDateTime.now(clock);
@@ -52,23 +53,25 @@ public class PainelService {
         List<StatusAgendamento> contamHoje = List.of(
                 StatusAgendamento.AGENDADO, StatusAgendamento.CONFIRMADO, StatusAgendamento.CONCLUIDO);
 
+        Long estabelecimentoId = tenantContext.obterEstabelecimentoId();
         PainelDTO painel = new PainelDTO();
         painel.setHoje(hoje);
-        painel.setAtendimentosHoje(agendamentoRepository.contarPorStatusNoPeriodo(
-                contamHoje, hoje.atStartOfDay(), hoje.plusDays(1).atStartOfDay()));
-        painel.setAguardandoConfirmacao(agendamentoRepository.contarPorStatusNoPeriodo(
-                List.of(StatusAgendamento.AGENDADO), agora, agora.plusDays(regras.getAntecedenciaMaximaDias() + 1L)));
-        painel.setProximosSeteDias(agendamentoRepository.contarPorStatusNoPeriodo(
-                StatusAgendamento.ATIVOS, agora, agora.plusDays(7)));
-        painel.setFaltasNoMes(agendamentoRepository.contarPorStatusNoPeriodo(
-                List.of(StatusAgendamento.FALTOU), primeiroDoMes.atStartOfDay(), primeiroDoProximoMes.atStartOfDay()));
+        painel.setAtendimentosHoje(agendamentoRepository.contarPorStatusNoPeriodoNoEstabelecimento(
+                estabelecimentoId, contamHoje, hoje.atStartOfDay(), hoje.plusDays(1).atStartOfDay()));
+        painel.setAguardandoConfirmacao(agendamentoRepository.contarPorStatusNoPeriodoNoEstabelecimento(
+                estabelecimentoId, List.of(StatusAgendamento.AGENDADO), agora, agora.plusDays(regras.getAntecedenciaMaximaDias() + 1L)));
+        painel.setProximosSeteDias(agendamentoRepository.contarPorStatusNoPeriodoNoEstabelecimento(
+                estabelecimentoId, StatusAgendamento.ATIVOS, agora, agora.plusDays(7)));
+        painel.setFaltasNoMes(agendamentoRepository.contarPorStatusNoPeriodoNoEstabelecimento(
+                estabelecimentoId, List.of(StatusAgendamento.FALTOU), primeiroDoMes.atStartOfDay(), primeiroDoProximoMes.atStartOfDay()));
 
-        BigDecimal receita = agendamentoRepository.somarReceita(
-                StatusAgendamento.CONCLUIDO, primeiroDoMes.atStartOfDay(), primeiroDoProximoMes.atStartOfDay());
+        BigDecimal receita = agendamentoRepository.somarReceitaNoEstabelecimento(
+                estabelecimentoId, StatusAgendamento.CONCLUIDO, primeiroDoMes.atStartOfDay(), primeiroDoProximoMes.atStartOfDay());
         painel.setReceitaDoMes(receita == null ? BigDecimal.ZERO : receita);
 
         List<AgendamentoResumoDTO> proximos = agendamentoRepository
-                .findTop5ByStatusInAndInicioAfterOrderByInicioAsc(StatusAgendamento.ATIVOS, agora)
+                .findTop5ByEstabelecimentoIdAndStatusInAndInicioAfterOrderByInicioAsc(
+                        estabelecimentoId, StatusAgendamento.ATIVOS, agora)
                 .stream()
                 .map(a -> agendamentoService.paraResumo(a, agora))
                 .toList();
@@ -81,7 +84,8 @@ public class PainelService {
      * Na grade, 1 minuto = 1 pixel, o que permite posicionar cada bloco só com topo e altura.
      */
     public AgendaSemanaDTO montarSemana(Long profissionalId, LocalDate referencia) {
-        if (!profissionalRepository.existsById(profissionalId)) {
+        Long estabelecimentoId = tenantContext.obterEstabelecimentoId();
+        if (profissionalRepository.findByIdAndEstabelecimentoId(profissionalId, estabelecimentoId).isEmpty()) {
             throw new RecursoNaoEncontradoException("Profissional", profissionalId);
         }
 
@@ -91,12 +95,13 @@ public class PainelService {
         LocalDate proximaSegunda = segunda.plusDays(7);
 
         List<Agendamento> agendamentos = agendamentoRepository
-                .buscarNoPeriodoDoProfissional(profissionalId, segunda.atStartOfDay(), proximaSegunda.atStartOfDay())
+                .buscarNoPeriodoDoProfissionalNoEstabelecimento(
+                        estabelecimentoId, profissionalId, segunda.atStartOfDay(), proximaSegunda.atStartOfDay())
                 .stream()
                 .filter(a -> a.getStatus() != StatusAgendamento.CANCELADO)
                 .toList();
-        List<Bloqueio> bloqueios = bloqueioRepository.buscarSobrepostos(
-                profissionalId, segunda.atStartOfDay(), proximaSegunda.atStartOfDay());
+        List<Bloqueio> bloqueios = bloqueioRepository.buscarSobrepostosNoEstabelecimento(
+                estabelecimentoId, profissionalId, segunda.atStartOfDay(), proximaSegunda.atStartOfDay());
 
         AgendaSemanaDTO semana = new AgendaSemanaDTO();
         semana.setProfissionalId(profissionalId);

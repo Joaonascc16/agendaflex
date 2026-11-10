@@ -12,4 +12,11 @@ public interface ServicoRepository extends JpaRepository<Servico, Long> {
     List<Servico> findAllByOrderByNomeAsc();
 
     List<Servico> findByAtivoTrueOrderByNomeAsc();
+    Optional<Servico> findByIdAndEstabelecimentoId(Long id, Long estabelecimentoId);
+
+    Optional<Servico> findByNomeIgnoreCaseAndEstabelecimentoId(String nome, Long estabelecimentoId);
+
+    List<Servico> findAllByEstabelecimentoIdOrderByNomeAsc(Long estabelecimentoId);
+
+    List<Servico> findByEstabelecimentoIdAndAtivoTrueOrderByNomeAsc(Long estabelecimentoId);
 }
