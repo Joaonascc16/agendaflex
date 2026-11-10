@@ -1,8 +1,5 @@
 package br.com.agendaflex.entity;
 
-import br.com.agendaflex.enums.StatusAgendamento;
-import br.com.agendaflex.exception.RegraNegocioException;
-import br.com.agendaflex.util.TempoUtil;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,15 +8,15 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import br.com.agendaflex.enums.StatusAgendamento;
+import br.com.agendaflex.exception.RegraNegocioException;
+import br.com.agendaflex.util.TempoUtil;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.Getter;
